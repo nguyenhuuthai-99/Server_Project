@@ -25,8 +25,8 @@ public class Server extends JFrame implements ActionListener, Runnable {
     static boolean recallStatus = false;
     
     // ArrayLists for Drone and Fire Objects
-    static ArrayList<DroneDetails> drones = new ArrayList<>();
-    static ArrayList<FireDetails> fires = new ArrayList<>();
+    static ArrayList<Drone> drones = new ArrayList<>();
+    static ArrayList<Fire> fires = new ArrayList<>();
     
     // GUI Setup, all elements of GUI declared
     private JLabel titleText = new JLabel("Drone Server");
@@ -44,13 +44,15 @@ public class Server extends JFrame implements ActionListener, Runnable {
     // Hash Maps to store positions of drones that need to be moved
     static HashMap<Integer, Integer> newXPositions = new HashMap<>();
     static HashMap<Integer, Integer> newYPositions = new HashMap<>();
+
+    private static DatabaseHelper databaseHelper = new DatabaseHelper();
     
     public class MapPanel extends JPanel {
 
-        private ArrayList<DroneDetails> drones;
-        private ArrayList<FireDetails> fires;
+        private ArrayList<Drone> drones;
+        private ArrayList<Fire> fires;
 
-        public MapPanel(ArrayList<DroneDetails> drones, ArrayList<FireDetails> fires) {
+        public MapPanel(ArrayList<Drone> drones, ArrayList<Fire> fires) {
             this.drones = drones;
             this.fires = fires;
         }
@@ -63,7 +65,7 @@ public class Server extends JFrame implements ActionListener, Runnable {
             setBackground(Color.WHITE);
             
             // Draw drones as blue circles with drone id
-            for (DroneDetails p : drones) {
+            for (Drone p : drones) {
                 if (p.getActive()) {
                     // Converts coordinates for use on 400 by 400 grid
                     int x = (100 - p.getX_pos()) * 2;
@@ -77,7 +79,7 @@ public class Server extends JFrame implements ActionListener, Runnable {
             }
             
             // Draw fires as red circles with fire id and severity
-            for (FireDetails p : fires) {
+            for (Fire p : fires) {
                 // Converts coordinates for use on 400 by 400 grid
                 int x = (100 - p.getX_pos()) * 2;
                 int y = (100 - p.getY_pos()) * 2;
@@ -221,7 +223,7 @@ public class Server extends JFrame implements ActionListener, Runnable {
         return recallStatus;
     }
     
-    static void addDrone(DroneDetails tempDrone) {
+    static void addDrone(Drone tempDrone) {
         // Assumes drone is new until found otherwise
         boolean newDrone = true;
         boolean wasActive = false;
@@ -231,7 +233,7 @@ public class Server extends JFrame implements ActionListener, Runnable {
         Name, Position and Active Status. If this happens says the drone
         is not new.
         */
-        for (DroneDetails p : drones) {
+        for (Drone p : drones) {
                 if (p.getId() == tempDrone.getId()) {
                     
                     if (p.getActive()) {
@@ -261,7 +263,7 @@ public class Server extends JFrame implements ActionListener, Runnable {
         
         // If the drone is new, creates the drone object and adds it to the arraylist
         if (newDrone) {
-            DroneDetails drone = new DroneDetails(tempDrone.getId(), tempDrone.getName(), tempDrone.getX_pos(), tempDrone.getY_pos(), tempDrone.getActive());
+            Drone drone = new Drone(tempDrone.getId(), tempDrone.getName(), tempDrone.getX_pos(), tempDrone.getY_pos(), tempDrone.getActive());
             drones.add(drone);
             outputLog("New Drone Registered. ID: " + drone.getId() + " Name: " + drone.getName());
         }
@@ -269,7 +271,7 @@ public class Server extends JFrame implements ActionListener, Runnable {
         // System.out.println(drones.size() + " Drone Objects");
     }
     
-    static void addFire(FireDetails tempFire) {
+    static void addFire(Fire tempFire) {
         
         /*
         Assigns ID to the new fire object then adds it to the ArrayList
@@ -278,13 +280,13 @@ public class Server extends JFrame implements ActionListener, Runnable {
         Then makes a fire object and adds it to the arraylist and prints fire details
         */
         if (fires.isEmpty()) {
-            FireDetails fire = new FireDetails(0, tempFire.getX_pos(), tempFire.getY_pos(), tempFire.getDroneId(), tempFire.getSeverity());
+            Fire fire = new Fire(0, tempFire.getX_pos(), tempFire.getY_pos(), tempFire.getDroneId(), tempFire.getSeverity());
             fires.add(fire);
             outputLog("New Fire Spotted at " + fire.getX_pos() + ", " + fire.getY_pos() + " with severity " + fire.getSeverity() + ".");
         } else {
             int max = 0;
             
-            for (FireDetails p : fires) {
+            for (Fire p : fires) {
                 if (p.getId() > max) {
                     max = p.getId();
                 }
@@ -292,7 +294,7 @@ public class Server extends JFrame implements ActionListener, Runnable {
             
             int fireId = max + 1;
             
-            FireDetails fire = new FireDetails(fireId, tempFire.getX_pos(), tempFire.getY_pos(), tempFire.getDroneId(), tempFire.getSeverity());
+            Fire fire = new Fire(fireId, tempFire.getX_pos(), tempFire.getY_pos(), tempFire.getDroneId(), tempFire.getSeverity());
             fires.add(fire);
             outputLog("New Fire Spotted at " + fire.getX_pos() + ", " + fire.getY_pos() + " with severity " + fire.getSeverity() + ".");
         }
@@ -302,12 +304,24 @@ public class Server extends JFrame implements ActionListener, Runnable {
     }
     
     static void readData() {
+        //Read drone data from database
+        ArrayList<Drone> drones = databaseHelper.getDrones();
+
+        //Read drone data from database
+        ArrayList<Fire> fires = databaseHelper.getFire();
+
+        //Read drone data from database
+        ArrayList<Drone> drones = databaseHelper.getDrones();
+
+
+
+
         // Reads ArrayList from binary file drones.bin
         try (
             FileInputStream fileIn = new FileInputStream("drones.bin");
             ObjectInputStream objectIn = new ObjectInputStream(fileIn)) {
             
-            ArrayList<DroneDetails> tempDrones = (ArrayList<DroneDetails>) objectIn.readObject();
+            ArrayList<Drone> tempDrones = (ArrayList<Drone>) objectIn.readObject();
             /* If the file is empty the tempDrones arraylist will be null
             If this is the case it will not set this temp arraylist to be
             the main arraylist. */
@@ -341,7 +355,7 @@ public class Server extends JFrame implements ActionListener, Runnable {
                int droneId = Integer.parseInt(data[3]);
                int severity = Integer.parseInt(data[4]);
 
-               FireDetails fire = new FireDetails(id, x_pos, y_pos, droneId, severity);
+               Fire fire = new Fire(id, x_pos, y_pos, droneId, severity);
                fires.add(fire);
          }
         } catch (IOException e) {
@@ -371,7 +385,7 @@ public class Server extends JFrame implements ActionListener, Runnable {
             // Writes heading line with column names
             writer.write("Fire ID,X Position,Y Position,Reporting Drone ID,Severity\n");
             
-            for (FireDetails p : fires) {
+            for (Fire p : fires) {
                 writer.write(p.toCSV() + "\n");
             }
             writer.close();
@@ -407,9 +421,9 @@ public class Server extends JFrame implements ActionListener, Runnable {
         // If fire existed sets boolean to true, else will output no fire found message
         boolean fireExists = false;
         
-        Iterator<FireDetails> iterator = fires.iterator();
+        Iterator<Fire> iterator = fires.iterator();
             while (iterator.hasNext()) {
-                FireDetails p = iterator.next();
+                Fire p = iterator.next();
                 if (p.getId() == intId) {
                     iterator.remove();
                     outputLog("Fire " + intId + " removed.");
@@ -462,7 +476,7 @@ public class Server extends JFrame implements ActionListener, Runnable {
         
         // Searches for ArrayList to check if a drone with the ID entered exists
         // If drone is active then it is good to be moved and droneExists is changed to true
-        for (DroneDetails p : drones) {
+        for (Drone p : drones) {
             if (p.getId() == intId) {
                 if (p.getActive()) {
                     droneExists = true;
@@ -535,7 +549,7 @@ public class Server extends JFrame implements ActionListener, Runnable {
         
         while (true) {
             dronesActive = false;
-            for (DroneDetails p : drones) {
+            for (Drone p : drones) {
                 if (p.getActive()) {
                     dronesActive = true;
                 }
@@ -597,7 +611,7 @@ class Connection extends Thread {
             boolean movementRequired = false;
             
             // Gets drone object from client and adds it to tempDrone object
-            DroneDetails tempDrone = (DroneDetails)in.readObject();
+            Drone tempDrone = (Drone)in.readObject();
             
             // Confirm drone object
             message = "confirmed";
@@ -611,7 +625,7 @@ class Connection extends Thread {
             // Sends fire object to addFire(); for it to be added, sends confirmation message
             if (numFires > 0) {
                 for (int i = 0; i < numFires; i++) {
-                    FireDetails tempFire = (FireDetails)in.readObject();
+                    Fire tempFire = (Fire)in.readObject();
                     Server.addFire(tempFire);
                     message = "confirmed";
                     out.writeObject(message);
